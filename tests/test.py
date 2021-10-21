@@ -2,7 +2,7 @@ import sys
 import os
 import backtracepython as bt
 import bugsnag
-import raygun4py
+from raygun4py import raygunprovider
 import rollbar
 import sentry_sdk
 
@@ -112,7 +112,52 @@ class test_bugsnag(test_base):
         self.report((lambda e: bugsnag.notify(e)))
 
 
+class test_raygun(test_base):
+
+    @classmethod
+    def setUpClass(cls):
+        try:
+            api_key = os.environ['RAYGUN_API_KEY']
+        except:
+            raise unittest.SkipTest('RAYGUN_API_KEY is not found..')
+        if not api_key:
+            raise unittest.SkipTest('RAYGUN_API_KEY is empty..')
+        cls.raygun = raygunprovider.RaygunSender(api_key)
+
+    def setUp(self):        
+        return super(test_raygun, self).setUp()
+
+    def tearDown(self):
+        return super(test_raygun, self).tearDown()
+
+    def test_report(self):
+        self.report((lambda _: test_raygun.raygun.send_exception()))
+
+
+class test_rollbar(test_base):
+
+    @classmethod
+    def setUpClass(cls):
+        try:
+            token = os.environ['ROLLBAR_TOKEN']
+        except:
+            raise unittest.SkipTest('ROLLBAR_TOKEN is not found..')
+        if not token:
+            raise unittest.SkipTest('ROLLBAR_TOKEN is empty..')
+        rollbar.init(token)
+
+    def setUp(self):        
+        return super(test_rollbar, self).setUp()
+
+    def tearDown(self):
+        return super(test_rollbar, self).tearDown()
+
+    def test_report(self):
+        self.report((lambda _: rollbar.report_exc_info()))
+        
+
 class test_sentry(test_base):
+
     @classmethod
     def setUpClass(cls):
         try:
@@ -139,48 +184,6 @@ class test_sentry(test_base):
     def test_report(self):
         self.report((lambda e: sentry_sdk.capture_exception(e)))
 
-
-class test_raygun(test_base):
-    @classmethod
-    def setUpClass(cls):
-        try:
-            api_key = os.environ['RAYGUN_API_KEY']
-        except:
-            raise unittest.SkipTest('RAYGUN_API_KEY is not found..')
-        if not api_key:
-            raise unittest.SkipTest('RAYGUN_API_KEY is empty..')
-        raygun = raygun4py.RaygunSender(api_key)
-
-    def setUp(self):        
-        return super(test_raygun, self).setUp()
-
-    def tearDown(self):
-        return super(test_raygun, self).tearDown()
-
-    def test_report(self):
-        self.report((lambda _: test_raygun.raygun.send_exception()))
-
-
-class test_rollbar(test_base):
-    @classmethod
-    def setUpClass(cls):
-        try:
-            token = os.environ['ROLLBAR_TOKEN']
-        except:
-            raise unittest.SkipTest('ROLLBAR_TOKEN is not found..')
-        if not token:
-            raise unittest.SkipTest('ROLLBAR_TOKEN is empty..')
-        rollbar.init(token)
-
-    def setUp(self):        
-        return super(test_rollbar, self).setUp()
-
-    def tearDown(self):
-        return super(test_rollbar, self).tearDown()
-
-    def test_report(self):
-        self.report((lambda _: rollbar.report_exc_info()))
-        
 
 if __name__ == '__main__':
     test_loader = unittest.defaultTestLoader
